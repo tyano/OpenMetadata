@@ -52,6 +52,7 @@ import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -244,6 +245,9 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+
+    String indexResolverClassName = config.getElasticSearchConfiguration().getIndexResolverClassName();
+    ElasticSearchIndexResolver indexResolver = ElasticSearchIndexResolver.fromClassName(indexResolverClassName);
     ElasticSearchIndexDefinition esIndexDefinition;
 
     // Initialize secrets manager
@@ -291,15 +295,15 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class), indexResolver);
         esIndexDefinition.createIndexes();
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class), indexResolver);
         esIndexDefinition.updateIndexes();
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class), indexResolver);
         esIndexDefinition.dropIndexes();
         break;
       case CREATE_INGESTION_BOT:
