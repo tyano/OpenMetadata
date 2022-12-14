@@ -56,6 +56,7 @@ import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 
@@ -66,6 +67,9 @@ import org.openmetadata.service.util.ElasticSearchClientUtils;
 @Collection(name = "search")
 public class SearchResource {
   private RestHighLevelClient client;
+
+  private ElasticSearchIndexResolver indexResolver;
+
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
@@ -78,6 +82,7 @@ public class SearchResource {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      this.indexResolver = ElasticSearchIndexResolver.fromClassName(config.getElasticSearchConfiguration().getIndexResolverClassName());
     }
   }
 
@@ -255,13 +260,14 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).lenient(true));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
+    QueryStringQueryBuilder queryStringBuilder = this.indexResolver.customizeQuery(
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -269,7 +275,7 @@ public class SearchResource {
             .field("columns.description", 1.0f)
             .field("columns.children.name", 5.0f)
             .lenient(true)
-            .fuzziness(Fuzziness.AUTO);
+            .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -294,8 +300,8 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true);
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
+        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true));
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -308,13 +314,13 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
         QueryBuilders.queryStringQuery(query)
             .field(NAME, 10.0f)
             .field(FIELD_DESCRIPTION, 2.0f)
             .field("chars.name")
             .field("charts.description")
-            .lenient(true);
+            .lenient(true));
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -335,13 +341,13 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
         QueryBuilders.queryStringQuery(query)
             .field(NAME, 5.0f)
             .field(DESCRIPTION)
             .field("tasks.name")
             .field("tasks.description")
-            .lenient(true);
+            .lenient(true));
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -383,20 +389,20 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true);
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true);
+    QueryStringQueryBuilder queryBuilder =this.indexResolver.customizeQuery(
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true));
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -412,8 +418,8 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true));
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
     highlightTagName.highlighterType(UNIFIED);
