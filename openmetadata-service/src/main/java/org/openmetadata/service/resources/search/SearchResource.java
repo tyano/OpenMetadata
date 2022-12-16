@@ -159,6 +159,7 @@ public class SearchResource {
       sortOrder = SortOrder.ASC;
     }
     // add deleted flag
+    query = this.indexResolver.customizeQueryString(query);
     query += " AND deleted:" + deleted;
 
     switch (index) {
@@ -260,22 +261,23 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-            QueryBuilders.queryStringQuery(query).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(QueryBuilders.queryStringQuery(query).lenient(true));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field("columns.name", 5.0f)
-            .field("columns.description", 1.0f)
-            .field("columns.children.name", 5.0f)
-            .lenient(true)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryStringBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_NAME, 10.0f)
+                .field(FIELD_DESCRIPTION, 1.0f)
+                .field("columns.name", 5.0f)
+                .field("columns.description", 1.0f)
+                .field("columns.children.name", 5.0f)
+                .lenient(true)
+                .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -292,7 +294,9 @@ public class SearchResource {
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, hb, from, size);
+
+    HighlightBuilder customizedHb = this.indexResolver.customizeHighlight(hb);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, customizedHb, from, size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database.name.keyword"));
     searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
 
@@ -300,8 +304,12 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_NAME, 10.0f)
+                .field(FIELD_DESCRIPTION, 2.0f)
+                .lenient(true));
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -314,13 +322,14 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("chars.name")
-            .field("charts.description")
-            .lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(NAME, 10.0f)
+                .field(FIELD_DESCRIPTION, 2.0f)
+                .field("chars.name")
+                .field("charts.description")
+                .lenient(true));
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -341,13 +350,14 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(NAME, 5.0f)
-            .field(DESCRIPTION)
-            .field("tasks.name")
-            .field("tasks.description")
-            .lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(NAME, 5.0f)
+                .field(DESCRIPTION)
+                .field("tasks.name")
+                .field("tasks.description")
+                .lenient(true));
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -389,20 +399,23 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true));
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -418,8 +431,9 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true));
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
     highlightTagName.highlighterType(UNIFIED);
