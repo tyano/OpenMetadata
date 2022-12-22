@@ -28,7 +28,7 @@ base_requirements = {
     "click>=7.1.1",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic[email]==1.9.0",
+    "pydantic==1.9.0",
     "google>=3.0.0",
     "google-auth>=1.33.0",
     "python-dateutil>=2.8.1",
